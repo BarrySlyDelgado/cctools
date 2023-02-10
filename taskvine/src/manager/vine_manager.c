@@ -4172,7 +4172,6 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			// retrieved at least one task
 			events++;
 			compute_manager_load(q, 1);
-			continue;
 		}
 
 		// expired tasks
