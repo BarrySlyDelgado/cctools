@@ -4198,7 +4198,6 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 				receive_all_tasks_from_worker(q, w);
 				break;
 		    }
-			continue;
 	    }
 
 		q->busy_waiting_flag = 0;
