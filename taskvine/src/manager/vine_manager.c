@@ -2756,7 +2756,30 @@ Advance the state of the system by finding any task that is
 waiting to be retrieved, then fetch the outputs of that task,
 and mark it as done.
 */
+static int receive_all_tasks_from_worker( struct vine_manager *q, struct vine_worker_info *w )
+{
+	struct vine_task *t;
+	uint64_t task_id;
 
+	ITABLE_ITERATE(w->current_tasks,task_id,t) {
+		if( t->state==VINE_TASK_WAITING_RETRIEVAL) {
+			fetch_output_from_worker(q, w, task_id);
+			// Shutdown worker if appropriate.
+			if ( w->factory_name ) {
+				struct vine_factory_info *f = vine_factory_info_lookup(q,w->factory_name);
+				if ( f && f->connected_workers > f->max_workers &&
+						itable_size(w->current_tasks) < 1 ) {
+					debug(D_VINE, "Final task received from worker %s, shutting down.", w->hostname);
+					shut_down_worker(q, w);
+				}
+			}
+
+		}
+    }
+	return 0;
+}
+	
+}
 static int receive_one_task( struct vine_manager *q )
 {
 	struct vine_task *t;
@@ -4002,6 +4025,7 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 	BEGIN_ACCUM_TIME(q, time_polling);
 
 	int n = build_poll_table(q);
+	int result;
 
 	// We poll in at most small time segments (of a second). This lets
 	// promptly dispatch tasks, while avoiding busy waiting.
@@ -4036,7 +4060,7 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 			}
 		}
 	}
-
+	/*
 	if(hash_table_size(q->workers_with_available_results) > 0) {
 		char *key;
 		struct vine_worker_info *w;
@@ -4046,6 +4070,7 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 			hash_table_firstkey(q->workers_with_available_results);
 		}
 	}
+	*/
 
 	END_ACCUM_TIME(q, time_status_msgs);
 
@@ -4160,11 +4185,26 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			// further events. This is because we give top priority to
 			// returning and retrieving tasks.
 		}
-
+		
+		
+	    if(hash_table_size(q->workers_with_available_results) > 0) {
+			int result;
+		    char *key;
+		    struct vine_worker_info *w;
+		    HASH_TABLE_ITERATE(q->workers_with_available_results,key,w) {
+			    get_available_results(q, w);
+			    hash_table_remove(q->workers_with_available_results, key);
+			    hash_table_firstkey(q->workers_with_available_results);
+				receive_all_tasks_from_worker(q, w);
+				break;
+		    }
+			continue;
+	    }
 
 		q->busy_waiting_flag = 0;
 
 		// tasks waiting to be retrieved?
+		/*
 		BEGIN_ACCUM_TIME(q, time_receive);
 		result = receive_one_task(q);
 		END_ACCUM_TIME(q, time_receive);
@@ -4174,6 +4214,7 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			compute_manager_load(q, 1);
 			continue;
 		}
+		*/
 
 		// expired tasks
 		BEGIN_ACCUM_TIME(q, time_internal);
