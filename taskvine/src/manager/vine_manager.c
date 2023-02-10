@@ -2779,7 +2779,6 @@ static int receive_all_tasks_from_worker( struct vine_manager *q, struct vine_wo
 	return 0;
 }
 	
-}
 static int receive_one_task( struct vine_manager *q )
 {
 	struct vine_task *t;
