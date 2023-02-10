@@ -2779,7 +2779,6 @@ static int receive_all_tasks_from_worker( struct vine_manager *q, struct vine_wo
 	return 0;
 }
 	
-}
 static int receive_one_task( struct vine_manager *q )
 {
 	struct vine_task *t;
@@ -4025,7 +4024,7 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 	BEGIN_ACCUM_TIME(q, time_polling);
 
 	int n = build_poll_table(q);
-	int result;
+
 
 	// We poll in at most small time segments (of a second). This lets
 	// promptly dispatch tasks, while avoiding busy waiting.
@@ -4060,7 +4059,7 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 			}
 		}
 	}
-	/*
+/*
 	if(hash_table_size(q->workers_with_available_results) > 0) {
 		char *key;
 		struct vine_worker_info *w;
@@ -4070,8 +4069,8 @@ static int poll_active_workers(struct vine_manager *q, int stoptime )
 			hash_table_firstkey(q->workers_with_available_results);
 		}
 	}
-	*/
 
+*/
 	END_ACCUM_TIME(q, time_status_msgs);
 
 	return workers_failed;
