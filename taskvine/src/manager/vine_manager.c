@@ -4194,11 +4194,15 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			    get_available_results(q, w);
 			    hash_table_remove(q->workers_with_available_results, key);
 			    hash_table_firstkey(q->workers_with_available_results);
-				receive_all_tasks_from_worker(q, w);
 				break;
 		    }
-			continue;
 	    }
+
+		struct vine_task *t = task_state_any(q, VINE_TASK_WAITING_RETRIEVAL);
+		if(t){
+			receive_all_tasks_from_worker(q, t->worker);
+			continue;
+		}
 
 		q->busy_waiting_flag = 0;
 
