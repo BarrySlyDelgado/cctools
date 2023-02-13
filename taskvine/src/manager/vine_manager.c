@@ -4196,7 +4196,6 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			    hash_table_firstkey(q->workers_with_available_results);
 				receive_all_tasks_from_worker(q, w);
 		    }
-			continue;
 	    }
 
 		q->busy_waiting_flag = 0;
@@ -4236,12 +4235,15 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			// tasks waiting to be dispatched?
 			BEGIN_ACCUM_TIME(q, time_send);
 			result = send_one_task(q);
+			int sent = 0;
 			END_ACCUM_TIME(q, time_send);
-			if(result) {
+			while(result) {
 				// sent at least one task
 				events++;
-				continue;
+				sent++;
+				result = send_one_task(q);
 			}
+			if(sent) continue;
 		}
 		//we reach here only if no task was neither sent nor received.
 		compute_manager_load(q, 1);
