@@ -4195,7 +4195,6 @@ static struct vine_task *vine_wait_internal(struct vine_manager *q, int timeout,
 			    hash_table_remove(q->workers_with_available_results, key);
 			    hash_table_firstkey(q->workers_with_available_results);
 				receive_all_tasks_from_worker(q, w);
-				break;
 		    }
 	    }
 
