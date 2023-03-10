@@ -117,6 +117,13 @@ def pack_env(spec, output, conda_executable=None, download_micromamba=None):
         logger.info('copying spec to environment...')
         shutil.copy(f'{env_dir}/conda_spec.yml', f'{env_dir}/env/conda_spec.yml')
 
+        try:
+            pp_run = shutil.which("poncho_package_run")
+            shutil.copy(pp_run, f'{env_dir}/bin/poncho_package_run')
+        except:
+            logger.error("poncho_package_run not found.")
+
+
         logger.info('generating environment file...')
 
         # Bug breaks bundling common packages (e.g. python).

@@ -155,12 +155,10 @@ struct vine_file * vine_file_untar( struct vine_file *f )
 
 struct vine_file * vine_file_poncho( struct vine_file *f)
 {
-	struct vine_task *t = vine_task_create("./poncho_package_run --unpack-to output -e package.tar.gz");
-	char * poncho_path = path_which("poncho_package_run");
-	vine_task_add_input(t, vine_file_local(poncho_path), "poncho_package_run", VINE_CACHE);
-	vine_task_add_input(t, f, "package.tar.gz", VINE_CACHE);
+	struct vine_task *t = vine_task_create("tar -xf  package.tar.gz -C output -U && output/bin/conda-unpack");
 	vine_task_add_output(t, vine_file_local("output"), "output", VINE_CACHE);
 	return vine_file_mini_task(t);
+
 }
 
 struct vine_file * vine_file_starch( struct vine_file *f )
