@@ -24,6 +24,21 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(mess
 
 conda_exec = 'conda'
 
+def create_env_from_dict(spec, conda_executable=None, download_micromamba=False, ignore_editable_packages=False):
+        outfile = ""
+        md5= hashlib.md5()
+        md5.update(str(spec).encode('utf-8'))
+        outfile = "env-md5-" + md5.hexdigest() + ".tar.gz"
+        with tempfile.NamedTemporaryFile() as poncho_spec:
+            with open(poncho_spec.name, "w") as f:
+                if isinstance(spec, dict):
+                    json.dump(spec, f, indent=4)
+                else:
+                    json.dumps(spec, f, indent=4)
+            print(outfile)
+            pack_env(poncho_spec.name, outfile, conda_executable, download_micromamba, ignore_editable_packages)
+        return outfile
+
 def _find_conda_executable(conda_executable, env_dir, download_micromamba=True):
     if conda_executable:
         return conda_executable
@@ -135,7 +150,8 @@ def pack_env_with_spec(spec, output, conda_executable=None, download_micromamba=
 
         logger.info('fetching http data...')
         http_data(spec, env_dir)
-
+        with open(env_dir + '/conda_spec.yml', 'r') as z:
+            print(z.read()) 
         # create conda environment in temp directory
         logger.info('populating environment...')
         _run_conda_command(env_dir, needs_confirmation, 'env create', '--file', env_dir + '/conda_spec.yml')
