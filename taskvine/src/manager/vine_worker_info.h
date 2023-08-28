@@ -81,6 +81,7 @@ struct vine_worker_info {
 };
 
 struct vine_worker_info * vine_worker_create( struct link * lnk );
+struct vine_worker_category_info *vine_worker_category_info_create();
 void vine_worker_delete( struct vine_worker_info *w );
 
 struct jx * vine_worker_to_jx( struct vine_worker_info *w );

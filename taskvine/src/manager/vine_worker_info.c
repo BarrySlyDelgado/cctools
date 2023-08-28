@@ -47,7 +47,7 @@ struct vine_worker_info *vine_worker_create(struct link *lnk)
 
 struct vine_worker_category_info *vine_worker_category_info_create()
 {
-	struct vine_worker_category_info *info = malloc(sizeof(*inf));
+	struct vine_worker_category_info *info = malloc(sizeof(*info));
 	if (!info) return 0;
 	memset(info, 0, sizeof(*info));
 	info->tasks_completed = 0;
