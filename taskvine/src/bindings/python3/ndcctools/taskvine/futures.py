@@ -59,6 +59,7 @@ except Exception:
 class Executor(Executor):
     def __init__(self, port=9123, batch_type="local", manager=None, manager_host_port=None, manager_name=None, factory_binary=None, worker_binary=None, log_file=os.devnull, factory=True, opts={}):
         self.manager = Manager(port=port)
+        self._function_categories = False
         if manager_name:
             self.manager.set_name(manager_name)
         if factory:
@@ -71,16 +72,30 @@ class Executor(Executor):
         else: 
             self.factory = None
 
+    def enable_function_categories
+        self._function_categories = True
+    def disable_function_categories
+        self._function_categories = False
+    def map(func, *iterables, timeout=None, chunksize=1):
+        pass
+    def shutdown(wait=True, *, cancel_futures=False):
+        pass
+        
     def submit(self, fn, *args, **kwargs):
         if isinstance(fn, FutureTask):
             self.manager.submit(fn)
             return fn._future
         future_task = FutureTask(self.manager, False, fn, *args, **kwargs)
+        if self._function_categories:
+            cvine.vine_task_set_category(future_task, fn.__name__)
         self.manager.submit(future_task)
         return future_task._future
 
     def task(self, fn, *args, **kwargs):
-        return FutureTask(self.manager, False, fn, *args, **kwargs)
+        future_task = FutureTask(self.manager, False, fn, *args, **kwargs)
+        if self._function_categories:
+            cvine.vine_task_set_category(future_task, fn.__name__)
+        return future_task
 
     def set(self, name, value):
         if self.factory:
@@ -122,6 +137,8 @@ class VineFuture(Future):
             return False
     def result(self, timeout="wait_forever"):
         return self._task.output(timeout=timeout)
+    def exception(timeout=None):
+        pass
     def add_done_callback(self, fn):
         self.callback_fns.append(fn)
 
