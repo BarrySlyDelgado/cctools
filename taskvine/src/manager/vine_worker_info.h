@@ -20,6 +20,12 @@ typedef enum {
 	VINE_WORKER_TYPE_STATUS  = 4,    // connection is known to be a status client
 } vine_worker_type_t;
 
+struct task_category_info {
+	int tasks_completed
+	timestamp_t total_transfer_time;
+	timestamp_t total_task_time;	
+};
+
 struct vine_worker_info {
 	/* Type of connection: unknown, worker, status client. */
 	vine_worker_type_t type;
@@ -65,6 +71,7 @@ struct vine_worker_info {
 	struct itable       *current_tasks_boxes;
 
 	/* Accumulated stats about tasks about this worker. */
+	struct hash_table *category_info;
 	int         finished_tasks;
 	int64_t     total_tasks_complete;
 	int64_t     total_bytes_transferred;
