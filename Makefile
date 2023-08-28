@@ -44,13 +44,18 @@ install: $(INSTALL_PACKAGES)
 	mkdir -p ${CCTOOLS_INSTALL_DIR}/etc/cctools
 	cp config.mk ${CCTOOLS_INSTALL_DIR}/etc/cctools
 	mkdir -p ${CCTOOLS_INSTALL_DIR}/doc/cctools
-	cp COPYING ${CCTOOLS_INSTALL_DIR}/doc/cctools
-	cp README ${CCTOOLS_INSTALL_DIR}/doc/cctools
+	cp README.md COPYING CREDITS ${CCTOOLS_INSTALL_DIR}/doc/cctools
 
 test: $(CCTOOLS_PACKAGES)
 	./run_all_tests.sh
 
+lint: config.mk
+	@$(MAKE) -C taskvine lint
+
+format: config.mk
+	@$(MAKE) -C taskvine format
+
 rpm:
 	./packaging/rpm/rpm_creator.sh $(RPM_VERSION) $(RPM_RELEASE)
 
-.PHONY: $(CCTOOLS_PACKAGES) $(INSTALL_PACKAGES) $(CLEAN_PACKAGES) all clean install test rpm
+.PHONY: $(CCTOOLS_PACKAGES) $(INSTALL_PACKAGES) $(CLEAN_PACKAGES) all clean install test lint rpm

@@ -828,8 +828,8 @@ class Manager(object):
     def install_library(self, task):
         if not isinstance(task, LibraryTask):
             raise TypeError("Please provide a LibraryTask as the task argument")
-        self._library_table[task.library_name] = task
-        cvine.vine_manager_install_library(self._taskvine, task._task, task.library_name)
+        self._library_table[task.provides_library_name] = task
+        cvine.vine_manager_install_library(self._taskvine, task._task, task.provides_library_name)
 
     ##
     # Remove a library from all connected workers
@@ -847,11 +847,17 @@ class Manager(object):
     # @param self            Reference to the current manager object.
     # @param name            Name of the Library to be created
     # @param function_list   List of all functions to be included in the library
+    # @param poncho_env      Name of an already prepared poncho environment
+    # @param init_command    A string describing a shell command to execute before the library task is run
+    # @param add_env         Whether to automatically create and/or add environment to the library
     # @returns               A task to be used with @ref ndcctools.taskvine.manager.Manager.install_library.
-    def create_library_from_functions(self, name, *function_list):
-
+    def create_library_from_functions(self, name, *function_list, poncho_env=None, init_command=None, add_env=True):
         # Delay loading of poncho until here, to avoid bringing in conda-pack etc unless needed.
-        from ndcctools.poncho import package_serverize
+        # ensure poncho python library is available
+        try:
+            from ndcctools.poncho import package_serverize
+        except ImportError:
+            raise ModuleNotFoundError("The poncho module is not available. Cannot create Library.")
 
         # positional arguments are the list of functions to include in the library
         # create a unique hash of a combination of function names and bodies
@@ -860,25 +866,39 @@ class Manager(object):
         # create path for caching library code and environment based on function hash
         library_cache_path = f"{self.cache_directory}/vine-library-cache/{functions_hash}"
         library_code_path = f"{library_cache_path}/library_code.py"
-        library_env_path = f"{library_cache_path}/library_env.tar.gz"
+
+        # don't create a custom poncho environment if it's already given.
+        if poncho_env:
+            library_env_path = poncho_env
+        else:
+            library_env_path = f"{library_cache_path}/library_env.tar.gz"
 
         # library cache folder doesn't exist, create it
         pathlib.Path(library_cache_path).mkdir(mode=0o755, parents=True, exist_ok=True)
+        
         # if the library code and environment exist, move on to creating the Library Task
         if os.path.isfile(library_code_path) and os.path.isfile(library_env_path):
             pass
         else:
-            print("No cached Library code and environment found, regenerating...")
             # create library code and environment
-            package_serverize.serverize_library_from_code(library_cache_path, function_list, name)
+            need_pack=True
+            if poncho_env or not add_env:
+                need_pack=False
+            package_serverize.serverize_library_from_code(library_cache_path, function_list, name, need_pack=need_pack)
             # enable correct permissions for library code
             os.chmod(library_code_path, 0o775)
 
         # create Task to execute the Library
-        t = LibraryTask("python ./library_code.py", name)
+        if init_command:
+            t = LibraryTask(f"{init_command} python ./library_code.py", name)
+        else:
+            t = LibraryTask("python ./library_code.py", name)
+
         # declare the environment
-        f = self.declare_poncho(library_env_path, cache=True)
-        t.add_environment(f)
+        if add_env:
+            f = self.declare_poncho(library_env_path, cache=True)
+            t.add_environment(f)
+    
         # declare the library code as an input
         f = self.declare_file(library_code_path, cache=True)
         t.add_input(f, "library_code.py")
@@ -895,9 +915,6 @@ class Manager(object):
     #                        to a poncho environment.
     # @returns               A task to be used with @ref ndcctools.taskvine.manager.Manager.install_library.
     def create_library_from_serverized_files(self, name, library_path, env=None):
-        # Delay loading of poncho until here, to avoid bringing in conda-pack etc unless needed.
-        from ndcctools.poncho import package_serverize
-
         t = LibraryTask("python ./library_code.py", name)
         if env:
             if isinstance(env, str):
@@ -1183,15 +1200,15 @@ class Manager(object):
     ##
     # Maps a function to elements in a sequence using taskvine remote task
     #
-    # Similar to regular map function in python, but creates a task to execute each function on a worker running a coprocess
+    # Similar to regular map function in python, but creates a task to execute each function on a worker running a library
     #
     # @param self       Reference to the current manager object.
-    # @param fn         The function that will be called on each element. This function exists in coprocess.
+    # @param fn         The function that will be called on each element. This function exists in library.
     # @param seq        The sequence that will call the function
-    # @param coprocess  The name of the coprocess that contains the function fn.
-    # @param name       This defines the key in the event json that wraps the data sent to the coprocess.
+    # @param library  The name of the library that contains the function fn.
+    # @param name       This defines the key in the event json that wraps the data sent to the library.
     # @param chunksize The number of elements to process at once
-    def remote_map(self, fn, seq, coprocess, name, chunksize=1):
+    def remote_map(self, fn, seq, library, name, chunksize=1):
         size = math.ceil(len(seq) / chunksize)
         results = [None] * size
         tasks = {}
@@ -1201,7 +1218,7 @@ class Manager(object):
             end = min(len(seq), start + chunksize)
 
             event = json.dumps({name: seq[start:end]})
-            p_task = FunctionCall(fn, event, coprocess)
+            p_task = FunctionCall(fn, event, library)
 
             p_task.set_tag(str(i))
             self.submit(p_task)
@@ -1230,13 +1247,13 @@ class Manager(object):
     # The pairs that are passed into the function are generated by itertools
     #
     # @param self     Reference to the current manager object.
-    # @param fn       The function that will be called on each element. This function exists in coprocess.
+    # @param fn       The function that will be called on each element. This function exists in library.
     # @param seq1     The first seq that will be used to generate pairs
     # @param seq2     The second seq that will be used to generate pairs
-    # @param coprocess  The name of the coprocess that contains the function fn.
-    # @param name       This defines the key in the event json that wraps the data sent to the coprocess.
+    # @param library  The name of the library that contains the function fn.
+    # @param name       This defines the key in the event json that wraps the data sent to the library.
     # @param chunksize The number of elements to process at once
-    def remote_pair(self, fn, seq1, seq2, coprocess, name, chunksize=1):
+    def remote_pair(self, fn, seq1, seq2, library, name, chunksize=1):
         size = math.ceil((len(seq1) * len(seq2)) / chunksize)
         results = [None] * size
         tasks = {}
@@ -1247,7 +1264,7 @@ class Manager(object):
         for item in itertools.product(seq1, seq2):
             if num == chunksize:
                 event = json.dumps({name: task})
-                p_task = FunctionCall(fn, event, coprocess)
+                p_task = FunctionCall(fn, event, library)
                 p_task.set_tag(str(num_task))
                 self.submit(p_task)
                 tasks[p_task.id] = num_task
@@ -1260,7 +1277,7 @@ class Manager(object):
 
         if len(task) > 0:
             event = json.dumps({name: task})
-            p_task = FunctionCall(fn, event, coprocess)
+            p_task = FunctionCall(fn, event, library)
             p_task.set_tag(str(num_task))
             self.submit(p_task)
             tasks[p_task.id] = num_task
@@ -1287,18 +1304,18 @@ class Manager(object):
     # Reduces a sequence until only one value is left, and then returns that value.
     # The sequence is reduced by passing a pair of elements into a function and
     # then stores the result. It then makes a sequence from the results, and
-    # reduces again until one value is left. Executes on coprocess
+    # reduces again until one value is left. Executes on library
     #
     # If the sequence has an odd length, the last element gets reduced at the
     # end.
     #
     # @param self       Reference to the current manager object.
-    # @param fn         The function that will be called on each element. Exists on the coprocess
+    # @param fn         The function that will be called on each element. Exists on the library
     # @param seq        The seq that will be reduced
-    # @param coprocess  The name of the coprocess that contains the function fn.
-    # @param name       This defines the key in the event json that wraps the data sent to the coprocess.
+    # @param library  The name of the library that contains the function fn.
+    # @param name       This defines the key in the event json that wraps the data sent to the library.
     # @param chunksize The number of elements per Task (for tree reduc, must be greater than 1)
-    def remote_tree_reduce(self, fn, seq, coprocess, name, chunksize=2):
+    def remote_tree_reduce(self, fn, seq, library, name, chunksize=2):
         tasks = {}
         num_task = 0
 
@@ -1311,7 +1328,7 @@ class Manager(object):
                 end = min(len(seq), start + chunksize)
 
                 event = json.dumps({name: seq[start:end]})
-                p_task = FunctionCall(fn, event, coprocess)
+                p_task = FunctionCall(fn, event, library)
 
                 p_task.set_tag(str(i))
                 self.submit(p_task)
@@ -1888,3 +1905,4 @@ class Factory(object):
     def set_environment(self, env):
         self._env_file = env
 
+# vim: set sts=4 sw=4 ts=4 expandtab ft=python:

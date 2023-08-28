@@ -22,4 +22,8 @@ clean:
 
 test: all
 
-.PHONY: all clean install test
+lint:
+
+format:
+
+.PHONY: all clean install test lint format

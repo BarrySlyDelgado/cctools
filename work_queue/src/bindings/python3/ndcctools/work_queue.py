@@ -1179,6 +1179,10 @@ class WorkQueue(object):
             work_queue_delete(self._work_queue)
             self._work_queue = None
 
+    def __del__(self):
+        # method needed because coffea executor pre-2023 calls __del__ explicitly.
+        pass
+
     def __enter__(self):
         return self
 
@@ -2557,3 +2561,4 @@ class Factory(object):
 
     specify_package = specify_environment
 
+# vim: set sts=4 sw=4 ts=4 expandtab ft=python:
