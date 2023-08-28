@@ -313,22 +313,22 @@ static struct vine_worker_info *find_worker_by_worst_fit(struct vine_manager *q,
 }
 
 /*
-Finds the worker that produces the fastest runtime of task given the tasks category and transfers for thae categories inputs.
+Finds the worker that produces the fastest runtime of task given the tasks category.
 i.e. this is a more specific version of find_worker_by_time.
 */
-static struct vine_worker_info *find_worker_by_perf(struct vine_manager *q, struct vine_task *t)
+static struct vine_worker_info *find_worker_by_category(struct vine_manager *q, struct vine_task *t)
 {
 	if(!t->category) return find_worker_by_time(q,t);
 
 	char *key;
 	struct vine_worker_info *w;
 	struct vine_worker_info *best_worker = 0;
-	struct vine_category_info *info;
+	struct vine_worker_category_info *info;
 	double best_time = HUGE_VAL;
 
 	HASH_TABLE_ITERATE(q->worker_table,key,w) {
 		if(check_worker_against_task(q, w, t)) {
-			info = hash_tabel_lookup(w->category_info,t->category);
+			info = hash_tabel_lookup(w->category_table,t->category);
 			if(info){
 				double t = (info->total_task_time) / info->total_tasks_complete;
 				if(!best_worker || t < best_time) {
@@ -400,8 +400,8 @@ struct vine_worker_info *vine_schedule_task_to_worker(struct vine_manager *q, st
 		return find_worker_by_worst_fit(q, t);
 	case VINE_SCHEDULE_FCFS:
 		return find_worker_by_fcfs(q, t);
-	case VINE_SCHEDULE_PERF:
-		return find_worker_by_perf(q,t);
+	case VINE_SCHEDULE_CATEGORY:
+		return find_worker_by_category(q, t);
 	case VINE_SCHEDULE_RAND:
 	default:
 		return find_worker_by_random(q, t);

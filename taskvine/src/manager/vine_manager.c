@@ -2756,34 +2756,27 @@ static void reap_task_from_worker(
 		struct vine_manager *q, struct vine_worker_info *w, struct vine_task *t, vine_task_state_t new_state)
 {
 	struct vine_worker_info *wr = t->worker;
-	struct task_category_info *info;
-	char *category;
+	struct vine_worker_category_info *info;
 
 	if(wr != w)
 	{
 		/* XXX this seems like a bug, should we return quickly here? */
 		debug(D_VINE, "Cannot reap task %d from worker. It is not being run by %s (%s)\n", t->task_id, w->hostname, w->addrport);
-	} else {
-		
+	} else {	
 		// record the perfromance of this task category for this worker.
 		if(t->category){
-			int flag=0;
-			HASH_TABLE_ITERATE(w->category_info,category,info){
-				if(strcmp(category, t->category)==0){
-					flag++;
-					info->tasks_completed++;
-					info->total_task_time += t->time_workers_execute_last;
-				}
-			}
-			if(!flag){
-				info = tasks_category_info_create();
+			info = hash_table_lookup(w->category_table,t->category);
+			if(info){
 				info->tasks_completed++;
 				info->total_task_time += t->time_workers_execute_last;
-				HASH_TABLE_INSERT(w->category_info,t->category,info);
+			}else{
+				info = vine_worker_category_info_create();
+				info->tasks_completed++;
+				info->total_task_time += t->time_workers_execute_last;
+				hash_table_insert(w->category_table,t->category,info);
 				
 			}
 		}
-
 		w->total_task_time += t->time_workers_execute_last;
 	}
 	/* Make sure the task and worker agree before changing anything. */

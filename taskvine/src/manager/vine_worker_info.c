@@ -40,7 +40,20 @@ struct vine_worker_info *vine_worker_create(struct link *lnk)
 
 	w->last_update_msg_time = w->start_time;
 
+	w->category_table = hash_table_create(0, 0);
+
 	return w;
+}
+
+struct vine_worker_category_info *vine_worker_category_info_create()
+{
+	struct vine_worker_category_info *info = malloc(sizeof(*inf));
+	if (!info) return 0;
+	memset(info, 0, sizeof(*info));
+	info->tasks_completed = 0;
+	info->total_transfer_time = 0;
+	info->total_task_time = 0;
+	return info;
 }
 
 void vine_worker_delete(struct vine_worker_info *w)
