@@ -391,8 +391,32 @@ def compute_time(log_info, axs, args):
             total_compute_time += task['waiting_retrieval'] - task['running']
     print('Compute Time:', total_compute_time)
     print('Application Time:', log_info['manager_info']['last_task_done'] - log_info['manager_info']['first_task'])
-        
 
+def category_time(log_info, axs, args):
+    
+    category_info = {}
+    task_info = log_info['task_info']
+    for task in task_info: 
+        function = task_info[task]["function"]
+        if function not in category_info:
+            category_info[function] = {"count":0, "total_runtime":0, "total_exec_time":0, "first":float('inf'), "last":float('-inf')}
+        category_info[function]["count"] = category_info[function]["count"] + 1
+        category_info[function]["total_runtime"] = category_info[function]["total_runtime"] + task_info[task]["waiting_retrieval"] - task_info[task]["running"]
+        category_info[function]["total_exec_time"] = category_info[function]["total_exec_time"] + task_info[task]["ex_end"] - task_info[task]["ex_start"]
+        category_info[function]["count"] = category_info[function]["count"] + 1
+        if task_info[task]["running"] < category_info[function]["first"]:
+            category_info[function]["first"] = task_info[task]["running"]
+        if task_info[task]["waiting_retrieval"] > category_info[function]["last"]:
+            category_info[function]["last"] = task_info[task]["waiting_retrieval"]
+    
+    for category in category_info:
+        total_worker_time = category_info[category]["total_runtime"] 
+        avg_worker_time = category_info[category]["total_runtime"] / category_info[category]["count"]
+        total_exec_time = category_info[category]["total_exec_time"]
+        avg_exec_time = category_info[category]["total_exec_time"] / category_info[category]["count"]
+        execution_period = category_info[category]["last"] - category_info[category]["first"]
+        print(f"CATEGORY: {category} ---\nTotal Worker Time: {total_worker_time}\nAverage Worker Time: {avg_worker_time}") 
+        print(f"Total Exec Time: {total_exec_time}\nAverage Exec Time {avg_exec_time}\nExecution Period {execution_period}\n")    
 def plot_task(log_info, axs, args):
 
     worker_info = log_info['worker_info']
@@ -829,6 +853,8 @@ def plot_any(log_info, plot, axs, args):
         plot_file_hist(log_info, axs, args)
     elif plot == 'compute-time':
         compute_time(log_info, axs, args)
+    elif plot == 'category-time':
+        category_time(log_info, axs, args)
 
     # debug based plots
     elif plot == 'data-exg':
@@ -882,6 +908,8 @@ if __name__ == '__main__':
     parser.add_argument('--internal-accum', dest='plots', action='append_const', const= 'internal-accum')
     parser.add_argument('--total-accum', dest='plots', action='append_const', const= 'total-accum')
     parser.add_argument('--compute-time', dest='plots', action='append_const', const= 'compute-time')
+    parser.add_argument('--category-time', dest='plots', action='append_const', const= 'category-time')
+    parser.add_argument('--dist-util', dest='plots', action='append_const', const= 'dist-util')
 
 
     # Subplot options
