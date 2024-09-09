@@ -88,6 +88,8 @@ struct vine_file *vine_file_create(const char *source, const char *cached_name, 
 	f->recovery_task = 0;
 	f->state = VINE_FILE_STATE_PENDING;
 	f->cache_level = cache_level;
+	f->file_depth = 1;
+	f->compute_time = 0;
 	f->flags = flags;
 
 	if (data) {

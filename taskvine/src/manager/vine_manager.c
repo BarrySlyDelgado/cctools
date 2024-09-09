@@ -1264,10 +1264,13 @@ static int fetch_outputs_from_worker(struct vine_manager *q, struct vine_worker_
 		break;
 	default:
 		/* Otherwise get all of the output files. */
+
+		/* retireve the std out if it has not already been recieved */
 		if (!t->output_received) {
 			result &= retrieve_output(q, w, t);
 			t->output_received = 1;
 		}
+		/* retrieve decalred files */
 		result &= vine_manager_get_output_files(q, w, t);
 		break;
 	}
@@ -2870,6 +2873,9 @@ static vine_result_code_t commit_task_to_worker(struct vine_manager *q, struct v
 
 	count_worker_resources(q, w);
 
+	/* calculate the depth of the task and respective mounted files. */
+	vine_manager_adjust_depths(q, t);
+
 	if (result != VINE_SUCCESS) {
 		debug(D_VINE, "Failed to send task %d to worker %s (%s).", t->task_id, w->hostname, w->addrport);
 		handle_failure(q, w, t, result);
@@ -4464,6 +4470,34 @@ static int task_request_count(struct vine_manager *q, const char *category, cate
 	return count;
 }
 
+
+void vine_manager_adjust_depths(struct vine_manager *q, struct vine_task *t)
+{
+	// NOTE: We should only adjust depths when actually scheduling, as all files are materialized
+	
+	// Set the task depth to the max file depth of its input mounts
+	int depth = 1;
+       	timestamp_t time_to_task = 0;	
+	struct vine_mount *m;
+	LIST_ITERATE(t->input_mounts, m){
+		if(m->file->file_depth > depth){
+			depth = m->file->file_depth;
+		}
+		if(m->file->compute_time > time_to_task){
+			time_to_task = m->file->compute_time;
+		}
+	}
+	t->task_depth = depth;
+	t->time_to_task = time_to_task;
+
+	depth++;
+
+	// Set file depth for all output files to be 1 more than task depth 
+	LIST_ITERATE(t->output_mounts, m){
+		m->file->file_depth = depth;
+	}
+}
+
 int vine_submit(struct vine_manager *q, struct vine_task *t)
 {
 	if (t->state != VINE_TASK_INITIAL) {
@@ -4481,6 +4515,7 @@ int vine_submit(struct vine_manager *q, struct vine_task *t)
 		q->fixed_location_in_queue++;
 		vine_task_set_scheduler(t, VINE_SCHEDULE_FILES);
 	}
+
 
 	/* If the task produces temporary files, create recovery tasks for those. */
 	vine_manager_create_recovery_tasks(q, t);

@@ -62,6 +62,8 @@ struct vine_task *vine_task_create(const char *command_line)
 
 	t->result = VINE_RESULT_UNKNOWN;
 	t->exit_code = -1;
+	t->task_depth = -1;
+	t->time_to_task = -1;
 
 	t->max_forsaken = -1;
 

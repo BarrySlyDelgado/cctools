@@ -435,6 +435,7 @@ vine_result_code_t vine_manager_get_output_files(struct vine_manager *q, struct 
 				if (!f || f->state != VINE_FILE_STATE_CREATED) {
 					result_single_file = VINE_APP_FAILURE;
 				}
+				// TODO Calculate here since we know it was created.
 			} else {
 				// otherwise, get the file.
 				result_single_file = vine_manager_get_output_file(q, w, t, m, m->file);

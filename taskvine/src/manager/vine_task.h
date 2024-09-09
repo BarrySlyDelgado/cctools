@@ -74,6 +74,7 @@ struct vine_task {
 	int try_count;               /**< The number of times the task has been dispatched to a worker without being forsaken. If larger than max_retries, return with result of last attempt. */
 	int forsaken_count;         /**< The number of times the task has been dispatched to a worker. If larger than max_forsaken, return with VINE_RESULT_FORSAKEN. */
 	int library_failed_count;   /**< The number of times the duplicated library instances failed on the workers. Only count for the template. */
+	int task_depth;             /**< The depth of thask in a graph structure. */
 	int exhausted_attempts;     /**< Number of times the task failed given exhausted resources. */
 	int forsaken_attempts;      /**< Number of times the task was submitted to a worker but failed to start execution. */
 	int workers_slow;           /**< Number of times this task has been terminated for running too long. */
@@ -93,6 +94,8 @@ struct vine_task {
 	/***** Metrics available to the user at completion through vine_task_get_metric.  *****/
 	/* All times in microseconds */
 	/* A time_when_* refers to an instant in time, otherwise it refers to a length of time. */
+
+	timestamp_t time_to_task;           /**< The estimated time to stage this task in relative to its position in the graph. */
 
 	timestamp_t time_when_submitted;    /**< The time at which this task was added to the queue. */
 	timestamp_t time_when_done;         /**< The time at which the task is mark as retrieved, after transfering output files and other final processing. */

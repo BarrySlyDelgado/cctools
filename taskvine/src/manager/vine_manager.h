@@ -270,6 +270,7 @@ int vine_manager_shut_down_worker(struct vine_manager *q, struct vine_worker_inf
 struct vine_task *vine_manager_no_wait(struct vine_manager *q, const char *tag, int task_id);
 
 void vine_manager_remove_worker(struct vine_manager *q, struct vine_worker_info *w, vine_worker_disconnect_reason_t reason);
+void vine_manager_adjust_depths(struct vine_manager *q, struct vine_task *t);
 
 /* The expected format of files created by the resource monitor.*/
 #define RESOURCE_MONITOR_TASK_LOCAL_NAME "vine-task-%d"
