@@ -90,6 +90,7 @@ struct vine_file *vine_file_create(const char *source, const char *cached_name, 
 	f->cache_level = cache_level;
 	f->file_depth = 1;
 	f->compute_time = 0;
+	f->task_time = 0;
 	f->flags = flags;
 
 	if (data) {

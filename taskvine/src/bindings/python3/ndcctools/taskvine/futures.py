@@ -246,6 +246,12 @@ class VineFuture(Future):
             return True
         else:
             return False
+    
+    def depth(self):
+        return self._task.depth
+
+    def metric(self, name):
+        return self._task.get_metric(name)
 
     def running(self):
         state = self._task._module_manager.task_state(self._task.id)

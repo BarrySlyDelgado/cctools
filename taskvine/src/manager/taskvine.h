@@ -525,6 +525,13 @@ is zero to indicate success, and non-zero to indicate failure.
 
 int vine_task_get_exit_code(struct vine_task *t);
 
+
+/** Get a task's depth in a graph.
+@param t A task object.
+@return The depth of a task in a graph.
+*/
+int vine_task_get_depth(struct vine_task *t);
+
 /** Get the standard output of the task.
 @param t A task object.
 @return A null-terminated string containing the standard

@@ -781,6 +781,13 @@ int vine_task_get_exit_code(struct vine_task *t)
 	return t->exit_code;
 }
 
+int vine_task_get_depth(struct vine_task *t)
+{
+	return t->task_depth;
+}
+
+
+
 vine_result_t vine_task_get_result(struct vine_task *t)
 {
 	return t->result;
@@ -810,6 +817,7 @@ int64_t vine_task_get_metric(struct vine_task *t, const char *name)
 	METRIC(time_workers_execute_all);
 	METRIC(time_workers_execute_exhaustion);
 	METRIC(time_workers_execute_failure);
+	METRIC(time_to_task);
 	METRIC(bytes_received);
 	METRIC(bytes_sent);
 	METRIC(bytes_transferred);

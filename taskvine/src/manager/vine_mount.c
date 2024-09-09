@@ -37,6 +37,7 @@ struct vine_mount *vine_mount_create(struct vine_file *file, const char *remote_
 void vine_mount_delete(struct vine_mount *m)
 {
 	if (!m)
+	printf("HELLO\n");
 		return;
 	vine_file_delete(m->file);
 	free(m->remote_name);

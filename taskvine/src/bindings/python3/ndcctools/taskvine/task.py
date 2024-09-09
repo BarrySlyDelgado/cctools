@@ -575,6 +575,15 @@ class Task(object):
         return cvine.vine_task_get_command(self._task)
 
     ##
+    # Get the depth of a task in a graph.
+    # @code
+    # >>> print(t.depth)
+    # @endcode
+    @property
+    def depth(self):
+        return cvine.vine_task_get_depth(self._task)
+
+    ##
     # Get the standard output of the task. Must be called only after the task
     # completes execution.
     # @code
@@ -694,6 +703,7 @@ class Task(object):
     # - time_workers_execute_all
     # - time_workers_execute_exhaustion
     # - time_workers_execute_failure
+    # - time_to_task
     # - bytes_received
     # - bytes_sent
     # - bytes_transferred

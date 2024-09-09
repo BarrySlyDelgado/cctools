@@ -435,7 +435,11 @@ vine_result_code_t vine_manager_get_output_files(struct vine_manager *q, struct 
 				if (!f || f->state != VINE_FILE_STATE_CREATED) {
 					result_single_file = VINE_APP_FAILURE;
 				}
-				// TODO Calculate here since we know it was created.
+				else{
+					// Calculate here since we know it was created.
+					// Calculated 
+					//m->file->compute_time += t->time_workers_execute_last;
+				}
 			} else {
 				// otherwise, get the file.
 				result_single_file = vine_manager_get_output_file(q, w, t, m, m->file);
@@ -448,6 +452,10 @@ vine_result_code_t vine_manager_get_output_files(struct vine_manager *q, struct 
 				break;
 			} else if (result_single_file == VINE_APP_FAILURE) {
 				result_all_files = result_single_file;
+			}
+			else {
+				// Calculate here on success
+				m->file->compute_time = m->file->task_time + t->time_workers_execute_last;
 			}
 		}
 	}
