@@ -4,14 +4,27 @@ import os
 import time
 import cloudpickle
 import uuid
+import logging 
 import ndcctools.taskvine as vine
 from multiprocessing import Pipe
 from multiprocessing.connection import wait
 
+LOG = logging.getLogger("merlin")
+LOG.propagate = True
+
+
+# TODO setup logging so that it can propogate when using merlin and also not merlin
 
 class StemObject():
+    """
+    Base Class for all Stem Objects (Chain, Group, Seed, Bloom)
+    _item_id = id that references a specific instance of a StemObject
+    _chain_id = id of the chain which is executing the object  
+    _parent_chain = id of the parent chain whi
+
+    """
     def __init__(self):
-        self._item_id = str(uuid.uuid1())
+        self._item_id = str(uuid.uuid4())
         self._link_id = None
         self._chain_id = None
         self._parent_chain = None
@@ -55,6 +68,8 @@ class Chain(StemObject):
     _current_results - list of current results generated from activelty running group.
     """
     def __init__(self, *args):
+
+        # for executing chains
         self._chain = []
         self._current_link = None
         self._current_items = {}
@@ -63,6 +78,7 @@ class Chain(StemObject):
         self._managers = {}
         self._default_mgr = str(uuid.uuid1())
 
+        # for 
         self._mapping = False
         self._full_map = False
         self._item_mapping = {}
@@ -105,6 +121,7 @@ class Chain(StemObject):
 
     # When deleting a master chain we send messages to kill all managers.
     def __del__(self):
+        exit(1)
         for manager in self._managers:
             self._managers[manager]["write"].send("kill")
 
@@ -118,6 +135,7 @@ class Chain(StemObject):
 
     # Execute Stem objects within a chain in order
     def run(self):
+        print(__name__)
         # When a Chain is called wirh run() it becomes the master chain.
         # The master chain maintains mappings of results from the previous link that has been executed
         # Additionally, the current links results are kept. This is used when mapping outputs to inputs between links
@@ -129,7 +147,6 @@ class Chain(StemObject):
             # Execution of a Group object: execute items concurrently.
             elif isinstance(link, Group):
                 self.exec_group(link)
-        print(self._previous_results)
 
     def exec_seed(self, seed):
         grouped_seed = Group(seed)
@@ -155,7 +172,6 @@ class Chain(StemObject):
                     del self._current_items[item._item_id]
             # check for results from managers
             self.check_results()
-
         self._previous_results = []
         # expand results to a continous list and move to previous results
         self.expand_results(self._current_results)
@@ -179,7 +195,10 @@ class Chain(StemObject):
             read, write = run_manager(manager)
             self._managers[manager] = {"read": read, "write": write}
             self._manager_links.append(read)
+
+        LOG.debug(f"Stem is sending {seed}") 
         self._managers[manager]["write"].send(seed)
+        LOG.debug(f"Stem has sent {seed}") 
         self._waiting_items[seed._item_id] = seed
         del self._current_items[seed._item_id]
 
@@ -206,9 +225,9 @@ class Chain(StemObject):
                 self._current_items[item._item_id] = item
                 # add item to sub chain waiting items
                 chain._waiting_items[item._item_id] = item
-            # remove chain from mater chain current items
+            # remove chain from master chain current items
             del self._current_items[chain._item_id]
-            # add chain to  mater chain current items
+            # add chain to master chain waiting items
             chain._parent_chain._waiting_items[chain._item_id] = chain
         elif chain_link is None:
             # TODO: deep copy probably
@@ -287,16 +306,16 @@ class Chain(StemObject):
             to the item will be reflected to its mirror item stored on the stem
             use the relevent data structure and ids item_id/chan_id to make necessary changes
             """
+            LOG.debug(f"Stem is receiving an item") 
             item = link.recv()
+            LOG.debug(f"Stem recieved item {item}") 
             if isinstance(item, Seed):
-                print(type(item._result))
-                print(item._result)
+                LOG.debug(f"Stem recieved item with result {item._result}") 
                 if isinstance(item._result, Bloom):
                     self.handle_bloom(item, item._result._item)
                 else:
                     self.unlink_from_chain(item)
             else:
-                print("Invalid object sent through Pipe!")
                 raise TypeError
 
     # remove item from its parent chain and master chain if they are not the same
@@ -322,7 +341,11 @@ class Chain(StemObject):
                 self.expand_results(result)
             else:
                 self._previous_results.append(result)
+    
 
+    ##################################
+    # item: the item that returned a Bloom Object
+    # bloomed_item: the Seed or Group object that has been returned.
     def handle_bloom(self, item, bloomed_item):
         chain = self._chain_mapping[item._chain_id]
         del chain._waiting_items[item._item_id]
@@ -395,7 +418,7 @@ class Seed(StemObject):
         # TODO: This keeps The connection object from complaining when sending certain objectis via the Commuincation Pipe
         # However, this may cause some overhead so a better solution may need to be explored
         self._srl = cloudpickle.dumps((func, args, kwargs))
-        self._item_id = str(uuid.uuid1())
+        self._item_id = str(uuid.uuid4())
         self._manager = None
         self._result = None
         self._attr_list = {}
@@ -422,7 +445,19 @@ class Seed(StemObject):
         return self
 
     def print(self):
-        print(self._function, self._args, self._kwargs)
+        func, args, kwargs = cloudpickle.loads(self._srl)
+        print(func, args, kwargs)
+
+    def getsizeof(self):
+        total = 0
+        #func, args, kwargs = cloudpickle.loads(self._srl)
+        #total += sys.getsizeof(func)
+        #total += sys.getsizeof(args)
+        #total += sys.getsizeof(kwargs)
+        #total += sys.getsizeof(kwargs)
+        total += sys.getsizeof(self._srl)
+        return total
+
 
 
 class Bloom():
@@ -458,10 +493,12 @@ def run_manager(name):
         write = c_write
         time.sleep(1)
         tasks = {}
+        returned_item = None
+        returned_task = None
 
         m = vine.Manager(port=[9123, 9143], name=name)
         while True:
-            while read.poll():
+            while read.poll(timeout=5):
                 try:
                     item = read.recv()
                     if isinstance(item, Seed):
@@ -481,12 +518,30 @@ def run_manager(name):
                 except Exception:
                     raise RuntimeError
                     exit(1)
+            if not returned_item:
+                returned_task = m.wait(5)
+                if returned_task:
+                    returned_item = tasks[returned_task.id]
+                    returned_item.set_result(returned_task.output)
+            if not read.poll(timeout=5) and returned_item:
+                write.send(returned_item)
+                del tasks[returned_task.id]
+                returned_task = None
+                returned_item = None
+                
 
-            while not m.empty():
-                task = m.wait(5)
-                if task:
-                    # TODO set results and error handling
-                    item = tasks[task.id]
-                    item.set_result(task.output)
-                    write.send(item)
-                    del tasks[task.id]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
