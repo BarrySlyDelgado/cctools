@@ -19,6 +19,7 @@ import time
 import random
 import contextlib
 import cloudpickle
+import multiprocessing as mp
 from uuid import uuid4
 from collections import defaultdict
 
@@ -385,6 +386,10 @@ class DaskVine(Manager):
                 priority = round(time.time(), 6)
             elif self.task_priority_mode == 'largest-input-first':
                 # best for saving disk space (with pruning)
+                #print(k)
+                #print(sexpr)
+                if callable(k):
+                    k = sexpr[0]
                 priority = sum([len(dag.get_result(c)._file) for c in dag.get_children(k)])
             elif self.task_priority_mode == 'largest-storage-footprint-first':
                 # prioritize tasks that can consume larger or longer-retained inputs
